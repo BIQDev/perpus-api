@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
+	"github.com/BIQDev/perpus-api/internal/helper"
 	"github.com/BIQDev/perpus-api/internal/middleware/modules"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -34,13 +34,8 @@ func (m *biqMiddleware) Logger(ro *mux.Router) mux.MiddlewareFunc {
 			r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 			if clExceedMax {
-				emptyBody := struct {
-					Message string `json:"message"`
-				}{
-					Message: "Body size exceed the limit of: " + os.Getenv("MAI_LOG_SIZE_MAX") + " bytes",
-				}
-				bodyBytes, _ = json.Marshal(emptyBody)
-				w.Write(bodyBytes)
+				errMsg := "Body size exceed the limit of: " + os.Getenv("MAI_LOG_SIZE_MAX") + " bytes"
+				helper.WriteResponse(w, http.StatusBadRequest, "error", errMsg, nil )
 				return
 			}
 
