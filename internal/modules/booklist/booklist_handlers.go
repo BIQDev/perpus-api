@@ -3,12 +3,14 @@ package booklist
 import (
 	"context"
 	"github.com/BIQDev/perpus-api/internal/db"
+	"github.com/BIQDev/perpus-api/internal/helper"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -69,18 +71,29 @@ func (*booklistHandlers) Create(w http.ResponseWriter, r *http.Request) {
 	coll := db.Mongo.DB().Collection("booklist")
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
 	defer cancel()
-	res, err := coll.InsertOne(ctx, &IMongoBooklist{
+	var bookList = &IMongoBooklist{
 		User: username ,
 		Title: r.FormValue("title"),
 		Image: imgPathFile,
-	})
+	}
+	res, err := coll.InsertOne(ctx, bookList)
 
-	log.Println(res, err)
+	log.Println(res)
+
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		log.Println(err)
+		r := regexp.MustCompile(`(dup key: )(.*)(}]},)`)
+		dupCheck := r.FindStringSubmatch(err.Error())
+		errMsg := err.Error()
+		if len(dupCheck) >= 2 {
+			errMsg = "Error: unique field violation. Duplicate field: " + r.FindStringSubmatch(err.Error())[2]
+		}
+		helper.WriteResponse(w, http.StatusInternalServerError, "error", errMsg, nil)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	bookList.ID = res.InsertedID.(primitive.ObjectID)
+	helper.WriteResponse(w, http.StatusOK, "success", "Success inserting data", bookList)
 }
 
 var BooklistHandlers = &booklistHandlers{}
