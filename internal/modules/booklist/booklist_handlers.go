@@ -44,7 +44,7 @@ func (*booklistHandlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if bookTotal > 9 {
+	if bookTotal >= 20 {
 		helper.WriteResponse(w, http.StatusBadRequest, "error", "Max record has been reached", nil)
 		return
 	}
@@ -140,8 +140,6 @@ func (*booklistHandlers) Read(w http.ResponseWriter, r *http.Request) {
 
 	var resStr json.RawMessage
 	resStr, err = json.Marshal(record)
-
-	log.Println(record)
 
 	if err != nil {
 		helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)

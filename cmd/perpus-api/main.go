@@ -34,13 +34,27 @@ func main() {
 
 	Init()
 
-
 	svcPort := os.Getenv("SERVICE_PORT")
 	log.Println("Listening at port:", svcPort)
-	err = http.ListenAndServe(
-		fmt.Sprintf(":%s", svcPort),
-		router.BIQRouter,
-	)
+
+	if os.Getenv("SSL_MODE") == "self-signed" {
+		log.Println(os.Getenv("SSL_SELF_SIGNED_PATH") + "/" + os.Getenv("SSL_SELF_SIGNED_NAME") + ".crt")
+		err = http.ListenAndServeTLS(
+			fmt.Sprintf(":%s", svcPort),
+			os.Getenv("SSL_SELF_SIGNED_PATH") + "/" + os.Getenv("SSL_SELF_SIGNED_NAME") + ".crt",
+			os.Getenv("SSL_SELF_SIGNED_PATH") + "/" + os.Getenv("SSL_SELF_SIGNED_NAME") + ".key",
+			nil,
+		)
+	} else {
+		err = http.ListenAndServe(
+			fmt.Sprintf(":%s", svcPort),
+			router.BIQRouter,
+		)
+	}
+
+	if err != nil {
+		log.Println(err)
+	}
 
 	Exit()
 

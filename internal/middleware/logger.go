@@ -23,7 +23,7 @@ func (m *biqMiddleware) Logger(ro *mux.Router) mux.MiddlewareFunc {
 			if contentLength != "" {
 
 				contentSize, errContentSize := strconv.Atoi(contentLength)
-				contentSizeMax, errContentSizeMax := strconv.Atoi(os.Getenv("MAI_LOG_SIZE_MAX"))
+				contentSizeMax, errContentSizeMax := strconv.Atoi(os.Getenv("BIQ_LOG_SIZE_MAX"))
 
 				clExceedMax = errContentSize != nil || errContentSizeMax != nil || contentSize > contentSizeMax
 			}
@@ -34,7 +34,7 @@ func (m *biqMiddleware) Logger(ro *mux.Router) mux.MiddlewareFunc {
 			r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 			if clExceedMax {
-				errMsg := "Body size exceed the limit of: " + os.Getenv("MAI_LOG_SIZE_MAX") + " bytes"
+				errMsg := "Body size exceed the limit of: " + os.Getenv("BIQ_LOG_SIZE_MAX") + " bytes"
 				helper.WriteResponse(w, http.StatusBadRequest, "error", errMsg, nil )
 				return
 			}
