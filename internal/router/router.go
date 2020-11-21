@@ -26,7 +26,7 @@ func init() {
 
 	BIQRouter = mux.NewRouter()
 	BIQRouter.NotFoundHandler = http.HandlerFunc(notFoundHandler)
-	BIQRouter.PathPrefix("/assets").Handler(http.FileServer(http.Dir("./web/assets")))
+	BIQRouter.PathPrefix("/assets").Handler(http.FileServer(http.Dir("./web")))
 	initialized = true
 }
 

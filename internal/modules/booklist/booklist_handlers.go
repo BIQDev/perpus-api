@@ -22,7 +22,13 @@ type IMongoBooklist struct {
 	ID       primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	Username string             `json:"username" bson:"username"`
 	Title    string             `json:"title" bson:"title"`
-	Image    string             `json:"image" bson:"image"`
+	ImagePath    string             `json:"image_path" bson:"image_path"`
+}
+
+type IMongoBooklistRes struct {
+	ID       primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Title    string             `json:"title" bson:"title"`
+	ImagePath    string             `json:"image_path" bson:"image_path"`
 }
 
 type booklistHandlers struct {
@@ -44,7 +50,7 @@ func (*booklistHandlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if bookTotal >= 20 {
+	if bookTotal >= 15 {
 		helper.WriteResponse(w, http.StatusBadRequest, "error", "Max record has been reached", nil)
 		return
 	}
@@ -70,8 +76,8 @@ func (*booklistHandlers) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	imgPathFile := imgPathDir + "/" + strconv.FormatInt(time.Now().UnixNano(), 10) + "-" + handler.Filename
+	imgFileName := strconv.FormatInt(time.Now().UnixNano(), 10) + "-" + handler.Filename
+	imgPathFile := imgPathDir + "/" + imgFileName
 	targetFile, err := os.OpenFile(imgPathFile, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		log.Println(err)
@@ -89,7 +95,7 @@ func (*booklistHandlers) Create(w http.ResponseWriter, r *http.Request) {
 	var bookList = &IMongoBooklist{
 		Username:  username,
 		Title: r.FormValue("title"),
-		Image: imgPathFile,
+		ImagePath: "assets/" + username + "/" + imgFileName,
 	}
 	res, err := coll.InsertOne(ctx, bookList)
 
@@ -129,7 +135,7 @@ func (*booklistHandlers) Read(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var record []IMongoBooklist
+	var record []IMongoBooklistRes
 	err = csr.All(ctx, &record)
 
 	if err != nil {
