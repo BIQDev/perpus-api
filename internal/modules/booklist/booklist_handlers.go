@@ -125,7 +125,7 @@ func (*booklistHandlers) Read(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	findOptions := options.Find()
-	// Sort by `price` field descending
+	// Sort by `_id` field descending
 	findOptions.SetSort(bson.D{{"_id", -1}})
 	csr, err := db.Mongo.DB().Collection("booklist").Find(ctx, bson.M{ "username": username }, findOptions)
 
@@ -154,6 +154,99 @@ func (*booklistHandlers) Read(w http.ResponseWriter, r *http.Request) {
 
 	helper.WriteResponse(w, http.StatusOK, "success", "", resStr)
 
+}
+
+func (*booklistHandlers) Update(w http.ResponseWriter, r *http.Request) {
+	var err error
+	params := mux.Vars(r)
+
+	username := params["username"]
+	id := params["id"]
+	imgPathDir := "web/assets/" + username
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// BEGIN GET CURRENT DATA
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Println(err)
+		helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)
+		return
+	}
+
+	csr := db.Mongo.DB().Collection("booklist").FindOne(ctx, bson.M{ "username": username, "_id": oid })
+
+	var record IMongoBooklistRes
+	err = csr.Decode(&record)
+	if err != nil {
+		log.Println(err)
+		helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)
+		return
+	}
+
+	// BEGIN PARSING FILES
+	if err = r.ParseMultipartForm(10 << 20); err != nil {
+		log.Println(err)
+		helper.WriteResponse(w, http.StatusBadRequest, "error", err.Error(), nil)
+		return
+	}
+	uploadedFile, handler, err := r.FormFile("image")
+	if err == nil {
+		defer uploadedFile.Close()
+	}
+
+	var fileIsSet = true
+	switch err {
+	case nil:
+		fileIsSet = true
+	case http.ErrMissingFile:
+		fileIsSet = false
+	default:
+		log.Println(err)
+		helper.WriteResponse(w, http.StatusBadRequest, "error", err.Error(), nil)
+		return
+	}
+
+	if fileIsSet {
+		if _, err = os.Stat(imgPathDir); os.IsNotExist(err) {
+			err = os.MkdirAll(imgPathDir, 0755)
+			if err != nil {
+				log.Println(err)
+				helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)
+				return
+			}
+		}
+		imgFileName := strconv.FormatInt(time.Now().UnixNano(), 10) + "-" + handler.Filename
+		imgPathFile := imgPathDir + "/" + imgFileName
+		targetFile, err := os.OpenFile(imgPathFile, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			log.Println(err)
+			helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)
+			return
+		}
+		defer targetFile.Close()
+		if _, err := io.Copy(targetFile, uploadedFile); err != nil {
+			log.Println(err)
+			helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)
+			return
+		}
+
+		coll := db.Mongo.DB().Collection("booklist")
+
+		updateData := bson.M{"image_path": "assets/" + username + "/" + imgFileName, "title": r.FormValue("title")}
+		_, err = coll.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": updateData})
+		if err != nil {
+			log.Println(err)
+			helper.WriteResponse(w, http.StatusInternalServerError, "error", err.Error(), nil)
+			return
+		}
+
+		err = os.Remove( "web/" + record.ImagePath)
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}
 }
 
 var BooklistHandlers = &booklistHandlers{}
